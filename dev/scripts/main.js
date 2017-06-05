@@ -295,7 +295,7 @@ wineApp.updateWineryList = function() {
 
 //Wine glass marker for winery locations
 wineApp.locationIcon = L.icon({
-	iconUrl: 'images/wineMarker.svg', // Wine glass image for the map marker
+	iconUrl: '../../images/wineMarker.svg', // Wine glass image for the map marker
 	iconSize: [40, 40], // dimensions of the icon
 	iconAnchor:   [15, -5], // point of the icon which will correspond to marker's location
 	popupAnchor: [0, 12.5] // position of the popup relative to the icon

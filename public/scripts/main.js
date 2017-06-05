@@ -1,0 +1,314 @@
+'use strict';
+
+function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
+
+//intial namespace
+var wineApp = {};
+
+//wineApp init
+wineApp.init = function () {
+	wineApp.getPECList();
+	wineApp.smoothScroll();
+	wineApp.addFilterListener();
+	wineApp.addUpdateOnScrollListener();
+	wineApp.addWineSelectionListener();
+	wineApp.addSelectionFilterListener();
+	wineApp.typeItOut(wineApp.headerString);
+};
+
+//Variables for the KEY!!!
+wineApp.key = 'MDo5MTFjNGNlMi00NGI5LTExZTctYTg1Ni04M2EzZGQxMDM2Zjg6WUN3NUFvVFV6Qno5RzhPZW9nZFhtN05SQTR6elRTbGRVdlBY';
+//Variable for VQA Wines
+wineApp.vqa = 'is_vqa';
+//Variable for just current wines
+wineApp.whereNot = 'is_dead,is_discontinued';
+//Array for the VQA Wine List
+wineApp.wineList = [];
+//Array for the PEC Winery List
+wineApp.wineryList = [];
+//Array for user Wine Selections
+wineApp.selections = [];
+//Array for filtering the Wine Types
+wineApp.currentFilters = ["Red Wine", "White Wine", "Sparkling Wine", "Rosé Wine", "Dessert Wine"];
+//This is for how many get appended at first.
+wineApp.wineListIndex = 9;
+wineApp.headerString = "Wine it Up!";
+wineApp.headerIndex = 0;
+//ARRAY TO HOLD THE LAT AND LONG
+wineApp.wineryArray = [];
+
+wineApp.typeItOut = function (string) {
+	setInterval(function () {
+		if (wineApp.headerIndex == wineApp.headerString.length) {
+			wineApp.headerIndex *= -1;
+		}
+		$(".hero h1").html(string.substring(0, Math.abs(wineApp.headerIndex)));
+		wineApp.headerIndex++;
+	}, 500);
+};
+
+// this will get the list of PEC wineries from sheetsu
+wineApp.getPECList = function () {
+	$.when(wineApp.getPEC()).then(function (resp) {
+		var _wineApp$wineryList;
+
+		resp = resp.map(function (n) {
+			return n["Winery"];
+		});
+		(_wineApp$wineryList = wineApp.wineryList).push.apply(_wineApp$wineryList, _toConsumableArray(resp));
+		wineApp.getAllWines(1); // beginning of chained ajax calls
+	});
+};
+
+// if the producer name is in the list of wineries, return true
+wineApp.filterPEC = function (item) {
+	if (wineApp.wineryList.includes(item.producer_name)) {
+		return true;
+	}
+	return false;
+};
+
+// this is an api call to sheetsu
+wineApp.getPEC = function () {
+	return $.ajax({
+		url: 'https://sheetsu.com/apis/v1.0/5ba5cb2993e7',
+		method: 'GET'
+	});
+};
+
+// this will recursively call the get wine app with increasing page numbers until no more wines are left
+wineApp.getAllWines = function (n) {
+	$.when(wineApp.getWine(n)).then(function (resp) {
+		if (resp.result.length != 0) {
+			var _wineApp$wineList;
+
+			(_wineApp$wineList = wineApp.wineList).push.apply(_wineApp$wineList, _toConsumableArray(resp.result));
+			wineApp.getAllWines(n + 1);
+		} else {
+			// last step: this will filter for all of the wines in PEC 
+			wineApp.wineList = wineApp.wineList.filter(wineApp.filterPEC);
+			for (var i = 0; i < wineApp.wineListIndex; i++) {
+				wineApp.appendItem(wineApp.wineList[i]);
+			}
+			wineApp.updateWineryList();
+			return;
+		}
+	});
+};
+
+// this is an api call to lcbo with a specific page number
+// this gets 100 wines at a time
+wineApp.getWine = function (pageNum) {
+	return $.ajax({
+		url: 'https://lcboapi.com/products',
+		method: 'GET',
+		dataType: 'json',
+		data: {
+			access_key: wineApp.key,
+			per_page: 100,
+			page: pageNum,
+			where: wineApp.vqa,
+			where_not: wineApp.whereNot,
+			volume_in_milliliters: 750
+		}
+	});
+};
+
+// Display this info for each wine on the page.
+//Look at that variable baby!
+wineApp.appendItem = function (item) {
+	if (item.image_url != undefined && item.secondary_category != undefined) {
+		var temp = '<div class="wine-item" id="' + item.id + '" data-type="' + item.secondary_category + '">\n\t\t\t\t\t\t<i class="fa fa-check hidden" aria-hidden="true"></i>\n\t\t\t\t\t\t<figure class="wine-item__img">\n\t\t\t\t\t\t\t<img src="' + item.image_url + '" alt="">\n\t\t\t\t\t\t\t<figcation class="wine-item__info">\n\t\t\t\t\t\t\t\t<div class="p-info xy-center">\n\t\t\t\t\t\t\t\t\t<p>' + item.producer_name + '</p>\n\t\t\t\t\t\t\t\t\t<p>' + item.package + '</p>\n\t\t\t\t\t\t\t\t\t<p>' + item.style + '</p>\n\t\t\t\t\t\t\t\t\t<p>LCBO ID - ' + item.id + '</p>\n\t\t\t\t\t\t\t\t\t<p>' + item.sugar_content + '</p>\n\t\t\t\t\t\t\t\t</div>\n\t\t\t\t\t\t\t</figcation>\n\t\t\t\t\t\t</figure>\n\t\t\t\t\t\t<div class="wine-item__name">\n\t\t\t\t\t\t\t<h4 class="xy-center">' + item.name + '</h4>\n\t\t\t\t\t\t</div>\n\t\t\t\t\t</div>';
+		$(".wines-inventory").append(temp);
+	}
+};
+
+wineApp.hideItem = function (item) {
+	item.css("transform", "scale(0)");
+	setTimeout(function () {
+		item.css("display", "none");
+	}, 300);
+};
+
+wineApp.displayItem = function (item) {
+	item.css("display", "block");
+	setTimeout(function () {
+		item.css("transform", "scale(1)");
+	}, 300);
+};
+
+//Smooth Scroll
+wineApp.smoothScroll = function () {
+	$('.wines_smoothScroll').on('click', function () {
+		$('html, body').animate({
+			scrollTop: $('.wines').offset().top }, 1500);
+	});
+	$('.about_smoothScroll').on('click', function () {
+		$('html, body').animate({
+			scrollTop: $('.about').offset().top }, 1500);
+	});
+	$('.collection_smoothScroll').on('click', function () {
+		$('html, body').animate({
+			scrollTop: $('.collection').offset().top }, 1500);
+	});
+};
+
+//This is to filter the selection when Clicking on of the buttons.
+wineApp.addFilterListener = function () {
+	$(".filter").on("click", function () {
+		wineApp.currentFilters = [];
+		$(this).toggleClass("filter--selected");
+
+		if ($(this).hasClass("all")) {
+			if ($(this).hasClass("filter--selected")) {
+				$(".reds").removeClass("filter--selected");
+				$(".whites").removeClass("filter--selected");
+				$(".other").removeClass("filter--selected");
+				wineApp.currentFilters = ["Red Wine", "White Wine", "Sparkling Wine", "Rosé Wine", "Dessert Wine"];
+				wineApp.refreshInventory();
+				return;
+			}
+		}
+		if ($(".reds").hasClass("filter--selected")) {
+			wineApp.currentFilters.push("Red Wine");
+		}
+		if ($(".whites").hasClass("filter--selected")) {
+			wineApp.currentFilters.push("White Wine");
+		}
+		if ($(".other").hasClass("filter--selected")) {
+			wineApp.currentFilters.push("Sparkling Wine", "Rosé Wine", "Dessert Wine");
+		}
+		$(".all").removeClass("filter--selected");
+		wineApp.refreshInventory();
+	});
+};
+
+//This is for when the wine is "selected"
+wineApp.addWineSelectionListener = function () {
+	$(".wines-inventory").on("click", ".wine-item", function () {
+		// event delegation
+		$(this).toggleClass("wine-item--selected");
+		$(this).find("i").toggleClass("hidden");
+		if ($(this).hasClass("wine-item--selected")) {
+			wineApp.selections.push(this);
+			wineApp.placeMapMarkers();
+		} else {
+			wineApp.selections.splice(wineApp.selections.indexOf(this), 1);
+			wineApp.placeMapMarkers();
+		}
+	});
+};
+
+wineApp.addSelectionFilterListener = function () {
+	$(".select-filter").on("click", function () {
+		$(this).toggleClass("select-filter--selected");
+		wineApp.refreshInventory();
+	});
+};
+
+//This is to show the wines that are selected and you are able to filter through them.
+wineApp.selectionFilterListener = function () {};
+
+//This is to append more wine choices to our Wine area. Refreshes the inventory.
+wineApp.refreshInventory = function () {
+	var currentInventory = $(".wine-item");
+	for (var i = 0; i < currentInventory.length; i++) {
+		//IIFE
+		(function (i) {
+			if ($(".select-filter").hasClass("select-filter--selected")) {
+				if (wineApp.currentFilters.includes(currentInventory[i].dataset.type) && $(currentInventory[i]).hasClass("wine-item--selected")) {
+					wineApp.displayItem($(currentInventory[i]));
+				} else {
+					wineApp.hideItem($(currentInventory[i]));
+				}
+			} else {
+				if (wineApp.currentFilters.includes(currentInventory[i].dataset.type)) {
+					wineApp.displayItem($(currentInventory[i]));
+				} else {
+					wineApp.hideItem($(currentInventory[i]));
+				}
+			}
+		})(i);
+	}
+};
+
+//Adds more updates on scroll.
+wineApp.addUpdateOnScrollListener = function () {
+	// issue if the user has filter on and scrolls down but nothing corresponding to their filtered category appears
+	$(window).scroll(function () {
+		if (wineApp.wineListIndex <= wineApp.wineList.length && wineApp.currentFilters.length != 0) {
+			if ($(window).scrollTop() + $(window).height() > $(document).height() - 10) {
+				for (var i = wineApp.wineListIndex; i < wineApp.wineListIndex + 9; i++) {
+					if (i >= wineApp.wineList.length) {
+						break;
+					}
+					wineApp.appendItem(wineApp.wineList[i]);
+				}
+				wineApp.wineListIndex += 9;
+				wineApp.refreshInventory();
+			}
+		}
+	});
+};
+
+//This is the leaflet map
+wineApp.mymap = L.map('mapContainer', { zoomControl: false, scrollWheelZoom: false }).setView([44.0003, -77.2505], 11);
+
+//The leaflet map API
+L.tileLayer('https://api.mapbox.com/styles/v1/mapbox/light-v9/tiles/256/{z}/{x}/{y}?access_token=pk.eyJ1IjoiYW15dHNjaHUiLCJhIjoiY2ozNG5zNmJnMDFrczJ3cDY1ZmI3NXNvMiJ9.xO_RFTtsZqDPHl2EW8d0IQ', {
+	attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="http://mapbox.com">Mapbox</a>'
+}).addTo(wineApp.mymap);
+
+// -------------- To get winery markers on page ------------------
+
+wineApp.updateWineryList = function () {
+	$.when(wineApp.getPEC()).then(function (resp) {
+		wineApp.wineryList = resp;
+		// console.log(wineApp.wineryList);
+		wineApp.placeMapMarkers(resp);
+	});
+};
+
+//Wine glass marker for winery locations
+wineApp.locationIcon = L.icon({
+	iconUrl: '../../images/wineMarker.svg', // Wine glass image for the map marker
+	iconSize: [40, 40], // dimensions of the icon
+	iconAnchor: [15, -5], // point of the icon which will correspond to marker's location
+	popupAnchor: [0, 12.5] // position of the popup relative to the icon
+});
+
+//THIS IS TO GET THE MARKERS TO DISPLAY ON THE PAGE WITH SOME WINERY INFO
+//USING THE LONG AND LAT FROM THE SHEETSU API
+wineApp.placeMapMarkers = function (resp) {
+	function buildPopup(marker) {
+		return '<div class="winery-popup">\n          <a href="' + marker.URL + '" class="image-popup-link" target="_blank">\n           \n          </a>\n          <div class="popup-text">\n            <a href="' + marker.URL + '" target="_blank" class="popup-text_content">\n              <h2>' + marker.Winery + '</h2>\n              <p class="wineryUrl"> Website: ' + marker.URL + '</p>\n            </a>\n          </div>\n        </div>';
+	}
+
+	resp.forEach(function (marker) {
+		var Lat = parseFloat(marker.Lat);
+		var Lng = parseFloat(marker.Lng);
+		var wineMarker = L.marker([Lat, Lng], {
+			icon: wineApp.locationIcon
+		}).bindPopup(buildPopup(marker)).addTo(wineApp.mymap);
+	});
+};
+
+//Document Ready!!
+$(function () {
+	wineApp.init();
+
+	$(function () {
+		// MOBILE NAV THING
+		$('.mobileMenu').on('click touchstart', function () {
+			$('.nav-bar__right__links').slideToggle("slow");
+		});
+	});
+	// SO THAT STUFF COMES BACK
+	$(window).resize(function () {
+		if ($(window).width() > 480) {
+			$('.nav-bar__right__links').css('display', 'inline-block');
+		} else {
+			$('.nav-bar__right__links').css('display', 'none');
+		}
+	});
+});
