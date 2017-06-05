@@ -1,10 +1,8 @@
 //intial namespace
 var wineApp = {};
-wineApp.wineryArray = []; //<----array to eventually hold restaurant longitude/latitude
 
 //wineApp init
 wineApp.init = function(){
-	// console.log(wineApp.getWine(1));
 	wineApp.getPECList();
 	wineApp.smoothScroll();
 	wineApp.addFilterListener();
@@ -13,9 +11,6 @@ wineApp.init = function(){
 	wineApp.addSelectionFilterListener();
 	wineApp.typeItOut(wineApp.headerString);
 	
-	// wineApp.myMap();
-	// wineApp.updateWineryList();
-	// wineApp.placeMapMarkers();
 }
 
 //Variables for the KEY!!!
@@ -36,6 +31,8 @@ wineApp.currentFilters = ["Red Wine", "White Wine", "Sparkling Wine", "Rosé Win
 wineApp.wineListIndex = 9;
 wineApp.headerString = "Wine it Up!";
 wineApp.headerIndex = 0;
+//ARRAY TO HOLD THE LAT AND LONG
+wineApp.wineryArray = [];
 
 wineApp.typeItOut = function(string) {
 	setInterval(function() {
@@ -44,7 +41,6 @@ wineApp.typeItOut = function(string) {
 		}
 		$(".hero h1").html(string.substring(0,Math.abs(wineApp.headerIndex)));
 		wineApp.headerIndex++;
-		// console.log(wineApp.headerIndex);
 	}, 500);
 }
 
@@ -61,9 +57,7 @@ wineApp.getPECList = function() {
 
 // if the producer name is in the list of wineries, return true
 wineApp.filterPEC = function(item) {
-	// console.log(item);
 	if (wineApp.wineryList.includes(item.producer_name)) {
-		// console.log(item);
 		return true;
 	}
 	return false;
@@ -118,7 +112,6 @@ wineApp.getWine = function(pageNum) {
 // Display this info for each wine on the page.
 //Look at that variable baby!
 wineApp.appendItem = function(item) {
-	console.log(item);
 	if (item.image_url != undefined && item.secondary_category != undefined) {
 		var temp = `<div class="wine-item" id="${item.id}" data-type="${item.secondary_category}">
 						<i class="fa fa-check hidden" aria-hidden="true"></i>
@@ -208,25 +201,10 @@ wineApp.addFilterListener = function() {
 }
 
 
-// //This is for when the wine is "selected"
-// wineApp.addWineSelectionListener = function() {
-// 	$(".wines-inventory").on("click", ".wine-item", function() { // event delegation
-// 		// console.log("SELECTEDYOOOO");
-// 		$(this).toggleClass("wine-item--selected");
-// 		$(this).find("i").toggleClass("hidden");
-// 		if ($(this).hasClass("wine-item--selected")) {
-// 			wineApp.selections.push(this);
-// 		}
-// 		else {
-// 			wineApp.selections.splice(wineApp.selections.indexOf(this), 1);
-// 		}
-// 	});
-// }
 
 //This is for when the wine is "selected"
 wineApp.addWineSelectionListener = function() {
   $(".wines-inventory").on("click", ".wine-item", function() { // event delegation
-    // console.log("SELECTEDYOOOO");
     $(this).toggleClass("wine-item--selected");
     $(this).find("i").toggleClass("hidden");
     if ($(this).hasClass("wine-item--selected")) {
@@ -284,8 +262,6 @@ wineApp.addUpdateOnScrollListener = function() { // issue if the user has filter
 	$(window).scroll(function() {
 		if (wineApp.wineListIndex <= wineApp.wineList.length && wineApp.currentFilters.length != 0) {
 			if ($(window).scrollTop()+$(window).height() > $(document).height()-10) {
-				console.log("TO THE BOTTOM");
-				console.log(wineApp.wineListIndex);
 				for (var i = wineApp.wineListIndex; i < wineApp.wineListIndex+9; i++) {
 					if (i >= wineApp.wineList.length) { break; }
 					wineApp.appendItem(wineApp.wineList[i]);
@@ -341,16 +317,15 @@ wineApp.placeMapMarkers = function(resp) {
             </a>
           </div>
         </div>`
-  }
+  	}
 
-  resp.forEach(function(marker) {
-    var Lat = parseFloat(marker.Lat);
-    var Lng = parseFloat(marker.Lng);
-    console.log(marker)
-    var wineMarker = L.marker([Lat, Lng], {
-      icon: wineApp.locationIcon
-   }).bindPopup(buildPopup(marker)).addTo(wineApp.mymap)
-});
+  	resp.forEach(function(marker) {
+    	var Lat = parseFloat(marker.Lat);
+    	var Lng = parseFloat(marker.Lng);
+    	var wineMarker = L.marker([Lat, Lng], {
+      	icon: wineApp.locationIcon
+   	}).bindPopup(buildPopup(marker)).addTo(wineApp.mymap)
+	});
 }
 
 //Document Ready!!
